@@ -4,9 +4,15 @@ import getTranscription from './utils/getTranscription.js'
 import makeTextFile from './utils/makeTextFile.js'
 import makeSeparatedTalkFile from './utils/makeSeparatedTalkFile.js'
 import execGenerateWordcloudScript from './utils/execGenerateWordcloudScript.js'
+import cors from 'cors'
 
 const app = express()
 const PORT = process.env.PORT || 3333
+
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST']
+}))
 
 app.use(express.json())
 app.use('/wordcloud', express.static('src/utils/wordcloud'))
@@ -37,14 +43,14 @@ app.post('/api', async (req, res) => {
       ${transcription}. Analise o texto que contém as falas de dois candidatos, Adriana e Lodovico, em um debate. Para cada candidato, identifique e destaque os pontos críticos positivos em suas falas — ou seja, os argumentos, ideias ou propostas que são considerados fortes, relevantes e construtivos para o tema discutido. Apresente um resumo desses pontos para Adriana e outro para Lodovico, destacando o que há de mais impactante em suas intervenções.
       O formato final deve ser assim, nada além:
 
-      ponto 1 da adriana;
-      ponto 2 da adriana:
-      ponto 3 da adriana;
+      Ponto 1 da adriana;
+      Ponto 2 da adriana:
+      Ponto 3 da adriana;
       ...
 
-      ponto 1 do lodovico;
-      ponto 2 do lodovico;
-      ponto 3 do lodovico;
+      Ponto 1 do lodovico;
+      Ponto 2 do lodovico;
+      Ponto 3 do lodovico;
       ...
     `
 
@@ -54,9 +60,9 @@ app.post('/api', async (req, res) => {
     const criticalPointsResponse = await fetchGeminiApi(promptGetCritialPoints)
     const criticalPoints = criticalPointsResponse.split('\n\n')
     
-    res.status(200).json({ adriana: criticalPoints[0], lodovico: criticalPoints[1] })
-
     await execGenerateWordcloudScript()
+    
+    res.status(200).json({ adriana: criticalPoints[0], lodovico: criticalPoints[1] })
   } 
   catch(err) {
     console.error(`An error had occurred: ${err}`)

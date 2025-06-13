@@ -15,11 +15,12 @@ plt.rcParams["figure.figsize"] = (10, 5)
 
 # Configuração do Wordcloud
 wordcloud = WordCloud(
-  max_font_size=50,
+  max_font_size=70,
   max_words=75,
   background_color="white",
   stopwords=stopwords,
-  colormap='flag')
+  colormap='flag'
+)
 
 # Função que cria os Wordclouds
 def createWordcloud(words, fileName):
