@@ -21,7 +21,7 @@ app.post('/api', async (req, res) => {
 
   try {
     const transcription = await clearTranscription(await getTranscription(url))
-    await makeTextFile(transcription, "text")
+    await makeTextFile(transcription, "transcription")
 
     const getCriticalPointsPrompt = `
       # ROLE
@@ -74,7 +74,7 @@ app.post('/api', async (req, res) => {
 
       # STEPS
       1. Analise a transcrição e identifique as falas de cada personagem com base nos nomes fornecidos.
-      2. Separe as falas de cada personagem em blocos distintos (separados por quebras de linha), garantindo que cada bloco contenha apenas as falas de um personagem específico.
+      2. Separe as falas de cada personagem em blocos distintos (separados em cada personagem ), garantindo que cada bloco contenha apenas as falas de um personagem específico.
       3. Mantenha a ordem cronológica das falas conforme aparecem na transcrição original.
       4. Ignore informações irrelevantes, repetitivas ou puramente contextuais.
       5. Priorize clareza e organização na separação das falas.
@@ -97,7 +97,7 @@ app.post('/api', async (req, res) => {
 
     await execGenerateWordcloudScript()
 
-    res.status(200).json()
+    res.status(200).json({ criticalPoints })
   }
   catch (err) {
     console.error(`An error have occurred: ${err}`)
