@@ -2,7 +2,6 @@ import express from 'express'
 import fetchGeminiApi from './utils/fetchGeminiApi.js'
 import getTranscription from './utils/getTranscription.js'
 import makeTextFile from './utils/makeTextFile.js'
-import makeSeparatedTalkFile from './utils/makeSeparatedTalkFile.js'
 import execGenerateWordcloudScript from './utils/execGenerateWordcloudScript.js'
 import cors from 'cors'
 
@@ -21,51 +20,87 @@ app.post('/api', async (req, res) => {
   const { url } = req.body
 
   try {
-    const transcription = await makeTextFile(await getTranscription(url))
+    const transcription = await clearTranscription(await getTranscription(url))
+    await makeTextFile(transcription, "text")
 
-    const promptGetTranscription = `
-      ${transcription}.Analise o texto que contém as falas de um debate entre dois candidatos, Lodovico e Adriana.
-      Separe todas as falas do Lodovico e apresente-as juntas, na ordem em que aparecem no texto, uma fala por linha.
-      Após as falas do Lodovico, deixe uma linha em branco para separar.
-      Em seguida, faça o mesmo com todas as falas da Adriana, também organizadas na ordem original, uma fala por linha.
-      O formato final deve ser assim, nada além:
+    const getCriticalPointsPrompt = `
+      # ROLE
+      Você é um analista narrativo especializado em decompor vídeos complexos em resumos estruturados por personagem. Seu foco é identificar acontecimentos importantes, conflitos, intenções ocultas, mudanças de comportamento e momentos críticos.
+
+      # INPUT
+      Transcrição do vídeo: ${transcription}
       
-      fala 1 do Lodovico
-      fala 2 do Lodovico
-      fala 3 do Lodovico
+      # STEPS
+      1. Identifique todos os personagens relevantes citados no vídeo.
+      2. Para cada personagem:
+        - descreva seu papel na narrativa;
+        - identifique seus objetivos;
+        - destaque conflitos e tensões;
+        - liste decisões importantes;
+        - identifique mudanças de comportamento ou posicionamento;
+        - destaque momentos críticos envolvendo esse personagem.
+      3. Detecte relações importantes entre personagens.
+      4. Extraia falas, ações ou eventos com alto impacto narrativo.
+      5. Ignore informações irrelevantes, repetitivas ou puramente contextuais.
+      6. Priorize clareza e densidade informacional.
       
-      fala 1 da Adriana
-      fala 2 da Adriana
-      fala 3 da Adriana
+      # EXPECTATION  
+      Retorne a resposta no seguinte formato, nada além disso:
+    
+      [
+        {
+          "character": "Nome do personagem",
+          "critical_points": [
+            "Ponto crítico 1",
+            "Ponto crítico 2",
+            "Ponto crítico 3"
+          ]
+        },
+        ...
+      ]
     `
-
-    const promptGetCritialPoints = `
-      ${transcription}. Analise o texto que contém as falas de dois candidatos, Adriana e Lodovico, em um debate. Para cada candidato, identifique e destaque os pontos críticos positivos em suas falas — ou seja, os argumentos, ideias ou propostas que são considerados fortes, relevantes e construtivos para o tema discutido. Apresente um resumo desses pontos para Adriana e outro para Lodovico, destacando o que há de mais impactante em suas intervenções.
-      O formato final deve ser assim, nada além:
-
-      Ponto 1 da adriana;
-      Ponto 2 da adriana:
-      Ponto 3 da adriana;
-      ...
-
-      Ponto 1 do lodovico;
-      Ponto 2 do lodovico;
-      Ponto 3 do lodovico;
-      ...
-    `
-
-    const separatedTalk = await fetchGeminiApi(promptGetTranscription)
-    await makeSeparatedTalkFile(separatedTalk)
 
     const criticalPointsResponse = await fetchGeminiApi(promptGetCritialPoints)
-    const criticalPoints = criticalPointsResponse.split('\n\n')
-    
+    const criticalPoints = JSON.parse(criticalPointsResponse)
+    const characterNames = criticalPoints.map(point => point.character)
+
+    const splitPhrasesPrompt = `
+      # ROLE
+      Você é um especialista em análise e segmentação de diálogos. Seu trabalho é identificar corretamente cada personagem e separar suas falas de forma limpa, organizada e precisa.
+
+      # INPUT
+      Transcrição do vídeo: ${transcription}
+      Lista de personagens identificados: ${characterNames}
+
+      # STEPS
+      1. Analise a transcrição e identifique as falas de cada personagem com base nos nomes fornecidos.
+      2. Separe as falas de cada personagem em blocos distintos (separados por quebras de linha), garantindo que cada bloco contenha apenas as falas de um personagem específico.
+      3. Mantenha a ordem cronológica das falas conforme aparecem na transcrição original.
+      4. Ignore informações irrelevantes, repetitivas ou puramente contextuais.
+      5. Priorize clareza e organização na separação das falas.
+      
+      # EXPECTATION  
+      Retorne a resposta no seguinte formato, nada além disso:
+
+      [
+        {
+          "character": "Nome do personagem",
+          "talk": "Falas do personagem, separadas por quebras de linha"
+        },
+        ...
+      ]
+    `
+
+    const splitedTalkResponse = await fetchGeminiApi(splitPhrasesPrompt)
+    const splitedTalk = JSON.parse(splitedTalkResponse)
+    await makeTextFile(splitedTalk, "separatedTalk")
+
     await execGenerateWordcloudScript()
-    
-    res.status(200).json({ adriana: criticalPoints[0], lodovico: criticalPoints[1] })
-  } 
-  catch(err) {
-    console.error(`An error had occurred: ${err}`)
+
+    res.status(200).json()
+  }
+  catch (err) {
+    console.error(`An error have occurred: ${err}`)
     res.status(500).json({ err })
   }
 })
