@@ -1,3 +1,5 @@
 node_modules
 .env
-src/utils/wordcloud/*.png
+*.png
+*.txt
+!src/utils/text_files/stopwords.txt
